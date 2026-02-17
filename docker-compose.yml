@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sikabiz}
+      POSTGRES_USER: ${POSTGRES_USER:-sikabiz}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sikabiz}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: server
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    ports:
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      - ./logs:/app/logs
+    env_file:
+      - .env
+    command: ["./sikabiz", "server"]
+
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: migrator
+    profiles:
+      - tools
+    depends_on:
+      - postgres
+    volumes:
+      - .env:/app/.env
+    command: ["sh", "-c", "echo 'Migrator container ready.' && tail -f /dev/null"]
+
+volumes:
+  postgres_data:
+
+
